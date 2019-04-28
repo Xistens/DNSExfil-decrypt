@@ -65,7 +65,7 @@ def main(passwd, pcap_file):
 def parse_args(args):
     """ Create the arguments """
     parser = argparse.ArgumentParser()
-    parser.add_argument(dest="infile", help="File to split")
+    parser.add_argument(dest="infile", help="pcap file")
     parser.add_argument("-p", dest="passwd", help="Password to decode RC4")
 
     if len(sys.argv) < 2:
