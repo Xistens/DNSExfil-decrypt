@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 import sys
-from scapy.all import *
+import os
+from scapy.all import DNSRR, rdpcap
 from base64 import b64decode
 import binascii
 import argparse
