@@ -2,7 +2,7 @@
 import sys
 import os
 from scapy.all import DNSRR, rdpcap
-from base64 import b64decode
+from base64 import b64decode, b32decode
 import binascii
 import argparse
 
@@ -42,8 +42,12 @@ def base64URL_decode(msg):
     else:
         return b64decode(msg)
 
+
 def main(passwd, pcap_file):
     packets = rdpcap(pcap_file)
+    chunk_index = 0
+    chunks = []
+
     for packet in packets:
         if packet.haslayer(DNSRR):
             if isinstance(packet.an, DNSRR):
@@ -53,15 +57,34 @@ def main(passwd, pcap_file):
                 # Remove domain
                 curr = curr[0:i[-3]]
                 num, data = curr.split(".", 1)
-                chunks = []
-                chunks.append(data.replace(".", ""))
-                curr = "".join(chunks)
 
-                rc4_decode = RC4(passwd)
-                data = rc4_decode.binaryDecrypt(bytearray(base64URL_decode(curr)))
+                if num.upper() == "INIT":
+                    data = b64decode(data).decode("utf-8")
+                    file_name = data.split("|")[0]
+                    nb_chunks = int(data.split("|")[1])
+                    print(f"[+] Found file [{file_name}] as a ZIP file in [{nb_chunks}] chunks")
 
-                with open(num, "wb") as fd:
-                    fd.write(data)
+                    # Reset stuff
+                    chunk_index = 0
+                    chunks = []
+                else:
+
+                    if int(num) == chunk_index:
+                        chunks.append(data.replace(".", ""))
+                        curr = "".join(chunks)
+                        chunk_index += 1
+
+                    if chunk_index == nb_chunks:
+                        try:
+                            rc4_decode = RC4(passwd)
+                            data = rc4_decode.binaryDecrypt(bytearray(base64URL_decode(curr)))
+
+                            pre, ext = os.path.splitext(file_name)
+                            with open(f"{pre}.zip", "wb") as fd:
+                                fd.write(data)
+                            print(f"[+] Output file [{pre}.zip] saved successfully")
+                        except IOError:
+                            print(f"[!] Could not write file [{pre}.zip]")
 
 def parse_args(args):
     """ Create the arguments """
